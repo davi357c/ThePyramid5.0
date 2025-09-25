@@ -7,7 +7,7 @@ public class Lever : MonoBehaviour
     public LeverPuzzle puzzleManager;
     public Transform player;
     public float interactionDistance = 3f;
-    public GameObject interactionUI; // Texto "Pressione E"
+    public GameObject interactionUI;
 
     private Vector3 originalRotation;
     private Vector3 downRotation;
@@ -16,10 +16,10 @@ public class Lever : MonoBehaviour
     void Start()
     {
         originalRotation = transform.eulerAngles;
-        downRotation = originalRotation + new Vector3(-45f, 0f, 0f);
+        downRotation = originalRotation + new Vector3(80f, 0f, 0f);
 
         if (interactionUI != null)
-            interactionUI.SetActive(false); // Esconde o texto no início
+            interactionUI.SetActive(false);
     }
 
     void Update()
