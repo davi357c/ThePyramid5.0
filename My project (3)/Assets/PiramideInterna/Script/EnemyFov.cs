@@ -28,7 +28,10 @@ public class EnemyFov : MonoBehaviour
 
         if (animator == null)
             Debug.LogError("Animator não encontrado no objeto!");
+
+        EnemyManager.Instance?.RegistrarInimigo(gameObject);
     }
+
 
     void Update()
     {

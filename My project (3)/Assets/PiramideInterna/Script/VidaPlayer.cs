@@ -14,10 +14,19 @@ public class VidaPlayer : MonoBehaviour
 
     private Animator animator;
 
+    public Transform pontoDeRespawn; // Atribuir no Inspector
+    public float tempoParaRespawn = 3f; // Quantos segundos depois de morrer
+    private Vector3 posicaoInicial;
+    private Quaternion rotacaoInicial;
+
+
     void Start()
     {
         vidaAtual = vidaMaxima;
         PlayerMorto = false;  // Reinicia a variável quando o jogo começa
+        posicaoInicial = transform.position;
+        rotacaoInicial = transform.rotation;
+
 
         animator = GetComponent<Animator>();
 
@@ -66,34 +75,27 @@ public class VidaPlayer : MonoBehaviour
 
     void Morrer()
     {
-        PlayerMorto = true; // Marca que o player morreu
+        PlayerMorto = true;
         Debug.Log("Personagem morreu!");
         animator.SetTrigger("Morrer");
 
-        // Desativa scripts que provavelmente controlam o movimento
-        var movimento = GetComponent<MonoBehaviour>(); // Para você substituir pelo seu script real
+        // Desativa controle
+        var movimento = GetComponent<Player>();
+        if (movimento != null) movimento.enabled = false;
 
-        // Exemplo de desativar um script específico, mude o nome para seu script de movimento
-        var scriptMovimento = GetComponent<PlayerInterno>(); // Substitua PlayerMovement pelo nome correto
-        if (scriptMovimento != null)
-        {
-            scriptMovimento.enabled = false;
-        }
-
-        // Se usa CharacterController sem script de movimento, talvez queira desativar componente:
         var cc = GetComponent<CharacterController>();
-        if (cc != null)
-        {
-            cc.enabled = false;
-        }
+        if (cc != null) cc.enabled = false;
 
-        // Se usa Rigidbody com controle manual:
         var rb = GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.isKinematic = true; // Para travar a física e impedir movimento
-        }
+        if (rb != null) rb.isKinematic = true;
+
+        // Resetar inimigos ao morrer
+        EnemyManager.Instance?.ResetarInimigos();
+
+        // Começa o respawn
+        StartCoroutine(Respawn());
     }
+
 
 
     private IEnumerator FadeSangue()
@@ -111,5 +113,39 @@ public class VidaPlayer : MonoBehaviour
 
         sangueNaTela.color = new Color(corOriginal.r, corOriginal.g, corOriginal.b, 0f);
     }
+
+    private IEnumerator Respawn()
+    {
+        yield return new WaitForSeconds(tempoParaRespawn);
+
+        // Reposicionar o player
+        if (pontoDeRespawn != null)
+        {
+            transform.position = pontoDeRespawn.position;
+            transform.rotation = pontoDeRespawn.rotation;
+        }
+        else
+        {
+            transform.position = posicaoInicial;
+            transform.rotation = rotacaoInicial;
+        }
+
+        // Restaurar vida
+        vidaAtual = vidaMaxima;
+        PlayerMorto = false;
+
+        // Reativar controle
+        var movimento = GetComponent<Player>();
+        if (movimento != null) movimento.enabled = true;
+
+        var cc = GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = true;
+
+        var rb = GetComponent<Rigidbody>();
+        if (rb != null) rb.isKinematic = false;
+
+        animator.Rebind(); // Resetar animações
+        animator.Update(0f);
+    }
+
 }
-    
