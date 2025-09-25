@@ -1,57 +1,62 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using System.Collections;
 
 public class VidaPlayer : MonoBehaviour
 {
-    public static bool PlayerMorto = false;  // Variável estática para informar se o player morreu
+    public static bool PlayerMorto = false;
 
+    [Header("Vida")]
     public int vidaMaxima = 100;
     public int vidaAtual;
 
-    public Image sangueNaTela; // Referência à imagem de sangue na tela
+    [Header("UI")]
+    public Image sangueNaTela;
     private Color corOriginal;
 
+    public GameObject painelMorte; // Painel com os botões
+    public Button botaoRespawn;
+    public Button botaoMenu;
+
+    [Header("Respawn")]
+    public float tempoParaRespawn = 3f;
+
     private Animator animator;
-
-    public Transform pontoDeRespawn; // Atribuir no Inspector
-    public float tempoParaRespawn = 3f; // Quantos segundos depois de morrer
-    private Vector3 posicaoInicial;
-    private Quaternion rotacaoInicial;
-
 
     void Start()
     {
         vidaAtual = vidaMaxima;
-        PlayerMorto = false;  // Reinicia a variável quando o jogo começa
-        posicaoInicial = transform.position;
-        rotacaoInicial = transform.rotation;
-
+        PlayerMorto = false;
 
         animator = GetComponent<Animator>();
-
-        if (animator == null)
-        {
-            Debug.LogWarning("Animator não encontrado no VidaPlayer.");
-        }
 
         if (sangueNaTela != null)
         {
             corOriginal = sangueNaTela.color;
-            sangueNaTela.color = new Color(corOriginal.r, corOriginal.g, corOriginal.b, 0f); // começa invisível
+            sangueNaTela.color = new Color(corOriginal.r, corOriginal.g, corOriginal.b, 0f);
         }
+
+        if (painelMorte != null)
+            painelMorte.SetActive(false); // desativa painel no começo
+
+        // Configura botões
+        if (botaoRespawn != null)
+            botaoRespawn.onClick.AddListener(RespawnCena);
+
+        if (botaoMenu != null)
+            botaoMenu.onClick.AddListener(VoltarMenu);
     }
 
     public void TomarDano(int quantidade)
     {
-        if (PlayerMorto) return; // Se já morreu, não toma mais dano
+        if (PlayerMorto) return;
 
         vidaAtual -= quantidade;
-        Debug.Log($"Vida atual: {vidaAtual}");
 
         if (sangueNaTela != null)
         {
-            sangueNaTela.color = new Color(corOriginal.r, corOriginal.g, corOriginal.b, 0.7f); // mostra sangue
+            sangueNaTela.color = new Color(corOriginal.r, corOriginal.g, corOriginal.b, 0.7f);
             StartCoroutine(FadeSangue());
         }
 
@@ -62,9 +67,7 @@ public class VidaPlayer : MonoBehaviour
         }
 
         if (vidaAtual <= 0)
-        {
             Morrer();
-        }
     }
 
     private IEnumerator ResetarTomarDano()
@@ -72,31 +75,6 @@ public class VidaPlayer : MonoBehaviour
         yield return new WaitForSeconds(0.5f);
         animator.SetBool("TomandoDano", false);
     }
-
-    void Morrer()
-    {
-        PlayerMorto = true;
-        Debug.Log("Personagem morreu!");
-        animator.SetTrigger("Morrer");
-
-        // Desativa controle
-        var movimento = GetComponent<Player>();
-        if (movimento != null) movimento.enabled = false;
-
-        var cc = GetComponent<CharacterController>();
-        if (cc != null) cc.enabled = false;
-
-        var rb = GetComponent<Rigidbody>();
-        if (rb != null) rb.isKinematic = true;
-
-        // Resetar inimigos ao morrer
-        EnemyManager.Instance?.ResetarInimigos();
-
-        // Começa o respawn
-        StartCoroutine(Respawn());
-    }
-
-
 
     private IEnumerator FadeSangue()
     {
@@ -114,38 +92,49 @@ public class VidaPlayer : MonoBehaviour
         sangueNaTela.color = new Color(corOriginal.r, corOriginal.g, corOriginal.b, 0f);
     }
 
-    private IEnumerator Respawn()
+    void Morrer()
     {
-        yield return new WaitForSeconds(tempoParaRespawn);
+        PlayerMorto = true;
+        animator.SetTrigger("Morrer");
 
-        // Reposicionar o player
-        if (pontoDeRespawn != null)
-        {
-            transform.position = pontoDeRespawn.position;
-            transform.rotation = pontoDeRespawn.rotation;
-        }
-        else
-        {
-            transform.position = posicaoInicial;
-            transform.rotation = rotacaoInicial;
-        }
-
-        // Restaurar vida
-        vidaAtual = vidaMaxima;
-        PlayerMorto = false;
-
-        // Reativar controle
+        // Desativa controle do player
         var movimento = GetComponent<Player>();
-        if (movimento != null) movimento.enabled = true;
+        if (movimento != null) movimento.enabled = false;
 
         var cc = GetComponent<CharacterController>();
-        if (cc != null) cc.enabled = true;
+        if (cc != null) cc.enabled = false;
 
         var rb = GetComponent<Rigidbody>();
-        if (rb != null) rb.isKinematic = false;
+        if (rb != null) rb.isKinematic = true;
 
-        animator.Rebind(); // Resetar animações
-        animator.Update(0f);
+        // Começa a coroutine para mostrar painel após 3 segundos
+        StartCoroutine(MostrarPainelDepois());
     }
 
+    private IEnumerator MostrarPainelDepois()
+    {
+        yield return new WaitForSeconds(3f); // espera 3 segundos
+
+        // Destrava o mouse para clicar nos botões
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        // Mostra painel de morte
+        if (painelMorte != null)
+            painelMorte.SetActive(true);
+    }
+
+
+
+    // Função do botão de respawn
+    public void RespawnCena()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    // Função do botão de voltar para o menu
+    public void VoltarMenu()
+    {
+        SceneManager.LoadScene("Menu"); // coloque o nome da sua cena de menu
+    }
 }
